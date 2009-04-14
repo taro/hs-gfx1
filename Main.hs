@@ -40,7 +40,8 @@ evtLoop = do
 
 	case ev of
 		Quit -> undefined
-		_ -> return ()
+		NoEvent -> return ()
+		_ -> evtLoop
 
 gfxLoop = do
 	clear [ColorBuffer, DepthBuffer]
@@ -58,4 +59,4 @@ gfxLoop = do
 
 main = do
 	gfxInit 640 480 "hello"
-	sequence $ cycle [evtLoop, gfxLoop]
+	sequence_ $ cycle [evtLoop, gfxLoop]
