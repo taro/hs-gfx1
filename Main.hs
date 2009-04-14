@@ -1,10 +1,7 @@
 module Main where
 import Prelude hiding (init)
-import Graphics.UI.SDL.Events
-import Graphics.UI.SDL.General
-import Graphics.UI.SDL.Types
-import Graphics.UI.SDL.Video
-import Graphics.UI.SDL.WindowManagement 
+import Graphics.UI.SDL hiding (SrcAlpha)
+import Graphics.Rendering.OpenGL.GL
 
 gfxInit w h cap = do
 	init [InitEverything]
@@ -21,6 +18,13 @@ gfxInit w h cap = do
 	screen <- setVideoMode w h 0 [AnyFormat, OpenGL]
 
 	setCaption cap ""
+
+	blendEquation $= FuncAdd
+	blendFunc $= (SrcAlpha, OneMinusSrcAlpha)
+	lighting $= Disabled
+	textureFunction $= Modulate
+	texture Texture2D $= Enabled
+	depthFunc $= Just Less
 
 evtLoop = do
 	ev <- waitEvent
