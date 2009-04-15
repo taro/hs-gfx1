@@ -56,13 +56,6 @@ gfxLoad path = do
 	setColorKey src [SrcColorKey] magenta 
 	fillRect dst Nothing alpha 
 	blitSurface src Nothing dst Nothing
-
-	-- possibly not necessary?
-	updateRect dst $ Rect {
-		rectX = 0,
-		rectY = 0,
-		rectW = 0,
-		rectH = 0 }
 	
 	[tex] <- genObjectNames 1
 
@@ -72,7 +65,7 @@ gfxLoad path = do
 	textureFilter Texture2D $= ((Linear', Nothing), Linear')
 
 	let texSize = TextureSize2D (fromIntegral srcW) (fromIntegral srcH)
-	let texPixels = PixelData BGRA UnsignedByte dstPixels
+	let texPixels = PixelData RGBA UnsignedByte dstPixels
 
 	texImage2D Nothing NoProxy 0 RGBA' texSize 0 texPixels 
 
@@ -93,7 +86,7 @@ gfxLoop = do
 	clear [ColorBuffer, DepthBuffer]
 
 	renderPrimitive Triangles $ do
-		color $ Color3 1 0 (0 :: GLfloat)
+		color $ Color3 1 1 (1 :: GLfloat)
 		texCoord $ TexCoord2 0 (0 :: GLfloat)
 		vertex $ Vertex3 0 0 (0 :: GLfloat)
 		texCoord $ TexCoord2 1 (0 :: GLfloat)
