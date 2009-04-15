@@ -64,8 +64,12 @@ gfxLoad path = do
 		rectW = 0,
 		rectH = 0 }
 	
-	tex <- liftM (!! 0) $ genObjectNames 1
+	[tex] <- genObjectNames 1
+
 	textureBinding Texture2D $= Just tex
+	textureWrapMode Texture2D S $= (Repeated, Repeat)
+	textureWrapMode Texture2D T $= (Repeated, Repeat)
+	textureFilter Texture2D $= ((Linear', Nothing), Linear')
 
 	let texSize = TextureSize2D (fromIntegral srcW) (fromIntegral srcH)
 	let texPixels = PixelData BGRA UnsignedByte dstPixels
