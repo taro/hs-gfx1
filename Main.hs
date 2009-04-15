@@ -1,6 +1,9 @@
 module Main where
 import Prelude hiding (init)
 import Control.Monad (liftM)
+import Data.Array.MArray (newListArray)
+import Data.Array.Storable (withStorableArray)
+import Foreign.Ptr (nullPtr, plusPtr)
 import Graphics.UI.SDL hiding (SrcAlpha)
 import Graphics.UI.SDL.Image (load)
 import Graphics.Rendering.OpenGL.GL
@@ -26,6 +29,7 @@ gfxInit w h cap = do
 	blendFunc $= (SrcAlpha, OneMinusSrcAlpha)
 	lighting $= Disabled
 	texture Texture2D $= Enabled
+	clientState VertexArray $= Enabled
 
 	viewport $= (Position 0 0, Size (fromIntegral w) (fromIntegral h))
 
@@ -74,6 +78,39 @@ gfxLoad path = do
 
 	return tex
 
+listToVBO :: [Float] -> IO BufferObject
+listToVBO elems = do
+	let size = length elems
+	let ptrSize = toEnum $ size * 4
+	
+	[buf] <- genObjectNames 1
+	bindBuffer ElementArrayBuffer $= Just buf
+
+	arr <- newListArray (0, size - 1) elems
+
+	withStorableArray arr (\ptr ->
+		bufferData ElementArrayBuffer $= (ptrSize, ptr, StaticDraw))
+
+	bindBuffer ArrayBuffer $= Nothing
+	return buf
+
+displayVbo buf size = do
+	let stride = 9
+	let offset = plusPtr nullPtr
+	let vxPos = VertexArrayDescriptor 3 Float stride $ offset 0
+	let vxClr = VertexArrayDescriptor 4 Float stride $ offset 12
+	let vxTex = VertexArrayDescriptor 2 Float stride $ offset (12 + 16)
+
+	bindBuffer ArrayBuffer $= Just buf
+
+	arrayPointer VertexArray $= vxPos
+	arrayPointer ColorArray $= vxClr
+	arrayPointer TextureCoordArray $= vxTex
+
+	drawArrays Triangles 0 size
+
+	bindBuffer ArrayBuffer $= Nothing
+
 evtLoop = do
 	ev <- pollEvent
 
@@ -82,27 +119,21 @@ evtLoop = do
 		NoEvent -> return ()
 		_ -> evtLoop
 
-gfxLoop = do
+gfxLoop vbo = do
 	clear [ColorBuffer, DepthBuffer]
 
-	renderPrimitive Triangles $ do
-		color $ Color3 1 1 (1 :: GLfloat)
-		texCoord $ TexCoord2 0 (0 :: GLfloat)
-		vertex $ Vertex3 0 0 (0 :: GLfloat)
-		texCoord $ TexCoord2 1 (0 :: GLfloat)
-		vertex $ Vertex3 100 0 (0 :: GLfloat)
-		texCoord $ TexCoord2 0 (1 :: GLfloat)
-		vertex $ Vertex3 0 100 (0 :: GLfloat)
-		texCoord $ TexCoord2 1 (0 :: GLfloat)
-		vertex $ Vertex3 100 0 (0 :: GLfloat)
-		texCoord $ TexCoord2 1 (1 :: GLfloat)
-		vertex $ Vertex3 100 100 (0 :: GLfloat)
-		texCoord $ TexCoord2 0 (1 :: GLfloat)
-		vertex $ Vertex3 0 100 (0 :: GLfloat)
+	displayVbo vbo 3
 
 	glSwapBuffers
 
 main = do
 	gfxInit 640 480 "hello"
 	testImage <- gfxLoad "test-image.jpg"
-	sequence_ $ cycle [evtLoop, gfxLoop]
+	testData <- listToVBO [
+		0, 0, 0, 1, 1, 1, 0, 0,
+		100, 0, 0, 1, 1, 1, 1, 0,
+		0, 100, 0, 1, 1, 1, 0, 1,
+		100, 0, 0, 1, 1, 1, 1, 0,
+		100, 100, 0, 1, 1, 1, 1, 1,
+		0, 100, 0, 1, 1, 1, 0, 1]
+	sequence_ $ cycle [evtLoop, gfxLoop testData]
