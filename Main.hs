@@ -119,9 +119,9 @@ displayVA va = do
 	arr <- newListArray (0, length va - 1) va
 
 	withStorableArray arr (\ptr -> do
-		interleavedArrays T2fC3fV3f 0 ptr)
-
-	drawArrays Triangles 0 18
+		interleavedArrays T2fC3fV3f 0 ptr
+		drawArrays Triangles 0 $ toEnum $ div (length va) 8 
+		bindBuffer ArrayBuffer $= Nothing)
 
 evtLoop = do
 	ev <- pollEvent
