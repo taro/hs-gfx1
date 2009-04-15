@@ -1,8 +1,7 @@
 module Main where
 import Prelude hiding (init)
 import Control.Monad (liftM)
-import Data.Array.MArray (newListArray)
-import Data.Array.Storable (withStorableArray)
+import Data.Array.Storable (newListArray, withStorableArray)
 import Foreign.Ptr (nullPtr, plusPtr)
 import Graphics.UI.SDL hiding (SrcAlpha)
 import Graphics.UI.SDL.Image (load)
@@ -28,8 +27,12 @@ gfxInit w h cap = do
 	blendEquation $= FuncAdd
 	blendFunc $= (SrcAlpha, OneMinusSrcAlpha)
 	lighting $= Disabled
+	clearColor $= Color4 1 0 1 0
 	texture Texture2D $= Enabled
+
 	clientState VertexArray $= Enabled
+	clientState ColorArray $= Enabled
+	clientState TextureCoordArray $= Enabled
 
 	viewport $= (Position 0 0, Size (fromIntegral w) (fromIntegral h))
 
@@ -95,8 +98,9 @@ listToVBO elems = do
 	return buf
 
 displayVbo buf size = do
-	let stride = 9
+	let stride = 36
 	let offset = plusPtr nullPtr
+
 	let vxPos = VertexArrayDescriptor 3 Float stride $ offset 0
 	let vxClr = VertexArrayDescriptor 4 Float stride $ offset 12
 	let vxTex = VertexArrayDescriptor 2 Float stride $ offset (12 + 16)
@@ -111,6 +115,14 @@ displayVbo buf size = do
 
 	bindBuffer ArrayBuffer $= Nothing
 
+displayVA va = do
+	arr <- newListArray (0, length va - 1) va
+
+	withStorableArray arr (\ptr -> do
+		interleavedArrays T2fC3fV3f 0 ptr)
+
+	drawArrays Triangles 0 18
+
 evtLoop = do
 	ev <- pollEvent
 
@@ -119,21 +131,24 @@ evtLoop = do
 		NoEvent -> return ()
 		_ -> evtLoop
 
-gfxLoop vbo = do
+gfxLoop :: [Float] -> IO ()
+gfxLoop verts = do
 	clear [ColorBuffer, DepthBuffer]
 
-	displayVbo vbo 3
+	displayVA verts
 
 	glSwapBuffers
 
 main = do
 	gfxInit 640 480 "hello"
 	testImage <- gfxLoad "test-image.jpg"
-	testData <- listToVBO [
-		0, 0, 0, 1, 1, 1, 0, 0,
-		100, 0, 0, 1, 1, 1, 1, 0,
-		0, 100, 0, 1, 1, 1, 0, 1,
-		100, 0, 0, 1, 1, 1, 1, 0,
-		100, 100, 0, 1, 1, 1, 1, 1,
-		0, 100, 0, 1, 1, 1, 0, 1]
-	sequence_ $ cycle [evtLoop, gfxLoop testData]
+
+	let testVerts = [
+		0, 0, 1, 1, 1, 0, 0, 0,
+		1, 0, 1, 1, 1, 100, 0, 0,
+		0, 1, 1, 1, 1, 0, 100, 0,
+		1, 0, 1, 1, 1, 100, 0, 0,
+		1, 1, 1, 1, 1, 100, 100, 0,
+		0, 1, 1, 1, 1, 0, 100, 0]
+
+	sequence_ $ cycle [evtLoop, gfxLoop testVerts]
